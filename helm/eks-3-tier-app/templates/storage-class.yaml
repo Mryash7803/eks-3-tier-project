@@ -1,0 +1,15 @@
+{{- if .Values.storageClass.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name | default "gp3-encrypted" }}
+  labels:
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+provisioner: {{ .Values.storageClass.provisioner | default "ebs.csi.aws.com" }}
+parameters:
+  type: {{ .Values.storageClass.type | default "gp3" }}
+  encrypted: {{ .Values.storageClass.encrypted | quote }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy | default "Retain" }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode | default "WaitForFirstConsumer" }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion | default true }}
+{{- end }}

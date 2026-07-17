@@ -1,0 +1,170 @@
+# Default values for eks-3-tier-app.
+# This is a YAML-formatted file.
+
+# PostgreSQL Configuration
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 15-alpine
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 5Gi
+  service:
+    port: 5432
+    type: ClusterIP
+  # If postgres.enabled is true, these are used to initialize the db
+  db:
+    name: tasks_db
+    user: postgres
+    password: postgres_password
+    sslMode: "disable" # disable for internal cluster connection, require for AWS RDS
+
+# Database Credentials & Secret Configuration
+# If externalSecrets.enabled is true, Helm will create a ClusterSecretStore and ExternalSecret.
+# Otherwise, it will create a standard Kubernetes Secret named 'backend-db-secret' using values from 'secretData' below.
+databaseSecret:
+  externalSecrets:
+    enabled: true # Enable External Secrets Operator mapping by default since it matches your production EKS configuration
+    region: ap-south-1
+    secretKey: eks-3tier-prod/database
+    secretStoreName: aws-secrets-store
+  # fallback values used only if externalSecrets.enabled is false and postgres.enabled is false
+  secretData:
+    dbHost: db
+    dbPort: "5432"
+    dbUsername: postgres
+    dbPassword: postgres_password
+    dbName: tasks_db
+
+# Go Backend Service Configuration
+backend:
+  replicaCount: 2
+  image:
+    repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-backend
+    tag: v5
+    pullPolicy: Always
+  service:
+    port: 8080
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  readinessProbe:
+    path: /api/health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    path: /api/health
+    initialDelaySeconds: 15
+    periodSeconds: 20
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  servicemonitor:
+    enabled: true
+    release: monitoring
+    interval: 15s
+
+# React Frontend Service Configuration
+frontend:
+  replicaCount: 2
+  image:
+    repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-frontend
+    tag: v1
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Database Migrations Job Configuration
+migration:
+  enabled: true
+  image:
+    repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-backend
+    tag: v5
+    pullPolicy: Always
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
+
+# Ingress Configuration (AWS ALB defaults)
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:469072181105:certificate/5149cb8f-f1e4-4b80-b93f-f85b0d1b0544
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+  hosts:
+    - host: app.mryash7803.online
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+          port: 8080
+        - path: /
+          pathType: Prefix
+          backend: frontend
+          port: 80
+
+# Storage Class Configuration (AWS EBS gp3)
+storageClass:
+  enabled: true
+  name: gp3-encrypted
+  provisioner: ebs.csi.aws.com
+  type: gp3
+  encrypted: "true"
+  reclaimPolicy: Retain
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+
+# EBS Test Pod & PVC Configuration (Disabled by default)
+ebsTest:
+  enabled: false
+  pvc:
+    name: ebs-test-pvc
+    size: 5Gi
+  pod:
+    name: ebs-test-pod
+    image: public.ecr.aws/docker/library/alpine:3.22
+
+# Load Testing configuration (Disabled by default)
+loadTest:
+  enabled: false
+  image: grafana/k6:latest
+  script: |
+    import http from 'k6/http';
+    import { check } from 'k6';
+    
+    export const options = {
+      vus: 100,
+      duration: '3m',
+    };
+    
+    export default function () {
+      const res = http.get('http://backend:8080/api/tasks');
+    
+      check(res, {
+        'status is 200': (r) => r.status === 200,
+      });
+    }

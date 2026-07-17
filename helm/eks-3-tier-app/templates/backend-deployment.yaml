@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  labels:
+    app: backend
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.backend.hpa.enabled }}
+  replicas: {{ .Values.backend.replicaCount | default 2 }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  minReadySeconds: 10
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy | default "Always" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port | default 8080 }}
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: backend-db-secret
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: backend-db-secret
+                  key: DB_PORT
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: backend-db-secret
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-db-secret
+                  key: DB_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-db-secret
+                  key: DB_NAME
+            - name: DB_SSLMODE
+              {{- if .Values.postgres.enabled }}
+              value: {{ .Values.postgres.db.sslMode | default "disable" | quote }}
+              {{- else }}
+              value: "require"
+              {{- end }}
+            - name: PORT
+              value: {{ .Values.backend.service.port | default 8080 | quote }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.readinessProbe.path | default "/api/health" }}
+              port: {{ .Values.backend.service.port | default 8080 }}
+            initialDelaySeconds: {{ .Values.backend.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.backend.readinessProbe.periodSeconds | default 10 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.livenessProbe.path | default "/api/health" }}
+              port: {{ .Values.backend.service.port | default 8080 }}
+            initialDelaySeconds: {{ .Values.backend.livenessProbe.initialDelaySeconds | default 15 }}
+            periodSeconds: {{ .Values.backend.livenessProbe.periodSeconds | default 20 }}

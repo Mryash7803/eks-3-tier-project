@@ -1,0 +1,9 @@
+# Pattern matching rules for ignoring files in a Helm chart.
+# See https://helm.sh/docs/chart_template_guide/helm_ignore_files/ for details.
+.git
+*~
+*.swp
+*.bak
+*.tmp
+*.orig
+.DS_Store

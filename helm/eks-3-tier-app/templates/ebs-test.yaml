@@ -1,0 +1,51 @@
+{{- if .Values.ebsTest.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.ebsTest.pvc.name | default "ebs-test-pvc" }}
+  labels:
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.storageClass.enabled }}
+  storageClassName: {{ .Values.storageClass.name | default "gp3-encrypted" }}
+  {{- else }}
+  storageClassName: gp3-encrypted
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ebsTest.pvc.size | default "5Gi" }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Values.ebsTest.pod.name | default "ebs-test-pod" }}
+  labels:
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+spec:
+  containers:
+    - name: test-container
+      image: {{ .Values.ebsTest.pod.image | default "public.ecr.aws/docker/library/alpine:3.22" }}
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "EBS persistent storage test" > /data/test.txt
+          echo "Created at: $(date)" >> /data/test.txt
+          sleep 3600
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+      volumeMounts:
+        - name: persistent-storage
+          mountPath: /data
+  volumes:
+    - name: persistent-storage
+      persistentVolumeClaim:
+        claimName: {{ .Values.ebsTest.pvc.name | default "ebs-test-pvc" }}
+{{- end }}

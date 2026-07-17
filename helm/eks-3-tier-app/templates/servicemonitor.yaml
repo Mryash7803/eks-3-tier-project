@@ -1,0 +1,21 @@
+{{- if .Values.backend.servicemonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "eks-3-tier-app.fullname" . }}-backend-monitor
+  labels:
+    app: backend
+    release: {{ .Values.backend.servicemonitor.release | default "monitoring" }}
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.backend.servicemonitor.interval | default "15s" }}
+{{- end }}

@@ -145,24 +145,45 @@ Open `k8s/frontend.yaml` and `k8s/backend.yaml`, then replace the image placehol
 - `image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-backend:latest`
 - `image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-frontend:latest`
 
-### 3. Apply Manifests to EKS Cluster
+### 3. Deploy using Helm (Recommended)
 
-Connect to your AWS EKS cluster and run:
+You can deploy the entire 3-tier application stack with the unified Helm chart located in `helm/eks-3-tier-app`:
+
+```bash
+# Create the production namespace (if not exists)
+kubectl create namespace production
+
+# Install the Helm chart
+helm install eks-3-tier-app ./helm/eks-3-tier-app --namespace production
+```
+
+To customize parameters such as database settings, AWS Secrets Manager secrets, or replica counts, update `helm/eks-3-tier-app/values.yaml` or use `--set`:
+```bash
+# Example: Disable in-cluster PostgreSQL to use an external RDS instance
+helm install eks-3-tier-app ./helm/eks-3-tier-app \
+  --namespace production \
+  --set postgres.enabled=false \
+  --set databaseSecret.secretData.dbHost="your-rds-endpoint.amazonaws.com"
+```
+
+### 4. Deploy using raw Manifests (Alternative)
+
+Connect to your AWS EKS cluster and apply the raw manifests:
 
 ```bash
 kubectl apply -f k8s/
 ```
 
-### 4. Verify Deployments & Expose URL
+### 5. Verify Deployments & Expose URL
 
 Monitor the status of pods and services:
 
 ```bash
-kubectl get pods -w
-kubectl get svc
+kubectl get pods -n production -w
+kubectl get svc -n production
 ```
 
-AWS will dynamically provision an **Elastic Load Balancer (ELB)** for the `frontend` service. Copy the external DNS address of the `frontend` LoadBalancer and navigate to it in your web browser.
+AWS ALB Controller will dynamically provision an Application Load Balancer based on the Ingress rules. Navigate to the host address configured (e.g., `app.mryash7803.online`) or verify the endpoint routes.
 
 ---
 

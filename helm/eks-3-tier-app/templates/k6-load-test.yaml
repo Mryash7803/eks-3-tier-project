@@ -1,0 +1,37 @@
+{{- if .Values.loadTest.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "eks-3-tier-app.fullname" . }}-k6-script
+  labels:
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+data:
+  backend.js: |
+{{ .Values.loadTest.script | indent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "eks-3-tier-app.fullname" . }}-k6-load-test
+  labels:
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: {{ .Values.loadTest.image | default "grafana/k6:latest" }}
+          command:
+            - k6
+            - run
+            - /scripts/backend.js
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: {{ include "eks-3-tier-app.fullname" . }}-k6-script
+{{- end }}
