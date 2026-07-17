@@ -1,0 +1,43 @@
+# Go backend binaries and logs
+backend/main
+backend/migrate/main
+backend/backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.log
+
+# Node/React frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Database & Docker Compose volumes
+pgdata/
+.db-data/
+
+# OS metadata and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.terraform/
+*.tfstate
+*.tfstate.backup

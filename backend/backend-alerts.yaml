@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backend-alerts
+  namespace: production
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: backend.rules
+      rules:
+        - alert: BackendHighLatency
+          expr: |
+            histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace="production"}[5m])) by (le, path)) > 0
+          for: 5m
+          labels:
+            severity: warning
+            namespace: production
+          annotations:
+            summary: "Backend p99 latency is high on {{ $labels.path }}"
+            description: "p99 latency for {{ $labels.path }} has been above 1s for 5 minutes. Current value: {{ $value }}s"
+        - alert: BackendHPAMaxedOut
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler="backend-hpa", namespace="production"}
+            >=
+            kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler="backend-hpa", namespace="production"}
+          for: 10m
+          labels:
+            severity: warning
+            namespace: production
+          annotations:
+            summary: "Backend HPA is at max replicas"
+            description: "backend-hpa has been at its max replica count (10) for over 10 minutes — traffic may be exceeding capacity, consider raising maxReplicas or investigating load source."
+        - alert: BackendPodNotReady
+          expr: |
+            kube_deployment_status_replicas{deployment="backend-deployment", namespace="production"}
+            !=
+            kube_deployment_status_ready_replicas{deployment="backend-deployment", namespace="production"}
+          for: 5m
+          labels:
+            severity: critical
+            namespace: production
+          annotations:
+            summary: "Backend deployment has unready replicas"
+            description: "backend-deployment has replicas that are not Ready for over 5 minutes — check pod status and logs."
+        - alert: BackendHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{namespace="production", status=~"5.."}[5m])) by (path)
+            /
+            sum(rate(http_requests_total{namespace="production"}[5m])) by (path)
+            > 0.05
+          for: 5m
+          labels:
+            severity: critical
+            namespace: production
+          annotations:
+            summary: "High error rate on {{ $labels.path }}"
+            description: "More than 5% of requests to {{ $labels.path }} are failing with 5xx errors over the last 5 minutes."
+
+
+

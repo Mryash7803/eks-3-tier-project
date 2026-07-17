@@ -1,0 +1,67 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"monitoring.coreos.com/v1","kind":"PrometheusRule","metadata":{"annotations":{},"labels":{"release":"monitoring"},"name":"backend-alerts","namespace":"production"},"spec":{"groups":[{"name":"backend.rules","rules":[{"alert":"BackendHighLatency","annotations":{"description":"p99 latency for {{ $labels.path }} has been above 1s for 5 minutes. Current value: {{ $value }}s","summary":"Backend p99 latency is high on {{ $labels.path }}"},"expr":"histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"production\"}[5m])) by (le, path)) \u003e 1\n","for":"5m","labels":{"severity":"warning"}},{"alert":"BackendHPAMaxedOut","annotations":{"description":"backend-hpa has been at its max replica count (10) for over 10 minutes — traffic may be exceeding capacity, consider raising maxReplicas or investigating load source.","summary":"Backend HPA is at max replicas"},"expr":"kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"backend-hpa\", namespace=\"production\"}\n\u003e=\nkube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler=\"backend-hpa\", namespace=\"production\"}\n","for":"10m","labels":{"severity":"warning"}},{"alert":"BackendPodNotReady","annotations":{"description":"backend-deployment has replicas that are not Ready for over 5 minutes — check pod status and logs.","summary":"Backend deployment has unready replicas"},"expr":"kube_deployment_status_replicas{deployment=\"backend-deployment\", namespace=\"production\"}\n!=\nkube_deployment_status_ready_replicas{deployment=\"backend-deployment\", namespace=\"production\"}\n","for":"5m","labels":{"severity":"critical"}},{"alert":"BackendHighErrorRate","annotations":{"description":"More than 5% of requests to {{ $labels.path }} are failing with 5xx errors over the last 5 minutes.","summary":"High error rate on {{ $labels.path }}"},"expr":"sum(rate(http_requests_total{namespace=\"production\", status=~\"5..\"}[5m])) by (path)\n/\nsum(rate(http_requests_total{namespace=\"production\"}[5m])) by (path)\n\u003e 0.05\n","for":"5m","labels":{"severity":"critical"}}]}]}}
+    prometheus-operator-validated: "true"
+  creationTimestamp: "2026-07-16T18:12:47Z"
+  generation: 3
+  labels:
+    release: monitoring
+  name: backend-alerts
+  namespace: production
+  resourceVersion: "461777"
+  uid: ecb0f431-21af-4689-b93e-ca1afca71756
+spec:
+  groups:
+  - name: backend.rules
+    rules:
+    - alert: BackendHighLatency
+      annotations:
+        description: 'p99 latency for {{ $labels.path }} has been above 1s for 5 minutes.
+          Current value: {{ $value }}s'
+        summary: Backend p99 latency is high on {{ $labels.path }}
+      expr: |
+        histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace="production"}[5m])) by (le, path)) > 0
+      for: 5m
+      labels:
+        severity: warning
+    - alert: BackendHPAMaxedOut
+      annotations:
+        description: backend-hpa has been at its max replica count (10) for over 10
+          minutes — traffic may be exceeding capacity, consider raising maxReplicas
+          or investigating load source.
+        summary: Backend HPA is at max replicas
+      expr: |
+        kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler="backend-hpa", namespace="production"}
+        >=
+        kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler="backend-hpa", namespace="production"}
+      for: 10m
+      labels:
+        severity: warning
+    - alert: BackendPodNotReady
+      annotations:
+        description: backend-deployment has replicas that are not Ready for over 5
+          minutes — check pod status and logs.
+        summary: Backend deployment has unready replicas
+      expr: |
+        kube_deployment_status_replicas{deployment="backend-deployment", namespace="production"}
+        !=
+        kube_deployment_status_ready_replicas{deployment="backend-deployment", namespace="production"}
+      for: 5m
+      labels:
+        severity: critical
+    - alert: BackendHighErrorRate
+      annotations:
+        description: More than 5% of requests to {{ $labels.path }} are failing with
+          5xx errors over the last 5 minutes.
+        summary: High error rate on {{ $labels.path }}
+      expr: |
+        sum(rate(http_requests_total{namespace="production", status=~"5.."}[5m])) by (path)
+        /
+        sum(rate(http_requests_total{namespace="production"}[5m])) by (path)
+        > 0.05
+      for: 5m
+      labels:
+        severity: critical

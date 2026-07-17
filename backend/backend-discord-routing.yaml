@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: backend-discord-routing
+  namespace: production
+  labels:
+    release: monitoring
+spec:
+  route:
+    receiver: discord-notifications
+    groupBy: ["alertname", "severity"]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+  receivers:
+    - name: discord-notifications
+      slackConfigs:
+        - apiURL:
+            name: discord-webhook
+            key: url
+          channel: "#alerts"
+          sendResolved: true
+          title: "{{ .Status | toUpper }}: {{ .CommonLabels.alertname }}"
+          text: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}\n{{ end }}"

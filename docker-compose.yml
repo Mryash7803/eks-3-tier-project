@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # 1. Database Tier: PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: eks-3tier-db
+    restart: always
+    environment:
+      POSTGRES_DB: tasks_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tasks_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Backend Tier: Go API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: eks-3tier-backend
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres_password
+      - DB_NAME=tasks_db
+      - DB_SSLMODE=disable
+      - PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+
+  # Database Migration Runner
+  db-migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["./migrate"]
+    container_name: eks-3tier-migrate
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres_password
+      - DB_NAME=tasks_db
+      - DB_SSLMODE=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # 3. Frontend Tier: React Application (Served via Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: eks-3tier-frontend
+    restart: always
+    ports:
+      - "3002:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+    driver: local
