@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: eks-3-tier-app-prod
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: backend=469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-backend,frontend=469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-frontend
+    argocd-image-updater.argoproj.io/backend.update-strategy: latest
+    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^v[0-9]+$
+    argocd-image-updater.argoproj.io/backend.helm.image-name: backend.image.repository
+    argocd-image-updater.argoproj.io/backend.helm.image-tag: backend.image.tag
+    argocd-image-updater.argoproj.io/frontend.update-strategy: latest
+    argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^v[0-9]+$
+    argocd-image-updater.argoproj.io/frontend.helm.image-name: frontend.image.repository
+    argocd-image-updater.argoproj.io/frontend.helm.image-tag: frontend.image.tag
+    argocd-image-updater.argoproj.io/write-back-method: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Mryash7803/eks-3-tier-project.git
+    targetRevision: main
+    path: helm/eks-3-tier-app
+    helm:
+      valueFiles:
+        - values.yaml
+        - ../values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true

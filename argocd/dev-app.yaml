@@ -1,24 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: eks-3-tier-app
+  name: eks-3-tier-app-dev
   namespace: argocd
 spec:
   project: default
-
   source:
     repoURL: https://github.com/Mryash7803/eks-3-tier-project.git
     targetRevision: main
     path: helm/eks-3-tier-app
-
+    helm:
+      valueFiles:
+        - values.yaml
+        - ../values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: production
-
+    namespace: dev
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-
     syncOptions:
       - CreateNamespace=true

@@ -1,0 +1,33 @@
+postgres:
+  enabled: true
+  persistence:
+    size: 5Gi
+
+databaseSecret:
+  externalSecrets:
+    enabled: false
+
+backend:
+  replicaCount: 1
+  rollout:
+    enabled: false
+  hpa:
+    enabled: false
+
+frontend:
+  replicaCount: 1
+  rollout:
+    enabled: false
+
+ingress:
+  hosts:
+    - host: dev.app.mryash7803.online
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+          port: 8080
+        - path: /
+          pathType: Prefix
+          backend: frontend
+          port: 80

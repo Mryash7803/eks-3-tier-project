@@ -1,0 +1,34 @@
+postgres:
+  enabled: false # Prod uses external AWS RDS
+
+databaseSecret:
+  externalSecrets:
+    enabled: true
+    secretKey: eks-3tier-prod/database
+
+backend:
+  replicaCount: 3
+  rollout:
+    enabled: true
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+
+frontend:
+  replicaCount: 3
+  rollout:
+    enabled: true
+
+ingress:
+  hosts:
+    - host: app.mryash7803.online
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+          port: 8080
+        - path: /
+          pathType: Prefix
+          backend: frontend
+          port: 80

@@ -1,13 +1,14 @@
-{{- if not .Values.frontend.rollout.enabled }}
-apiVersion: apps/v1
-kind: Deployment
+{{- if .Values.frontend.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
-  name: frontend-deployment
+  name: frontend-rollout
   labels:
     app: frontend
     {{- include "eks-3-tier-app.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicaCount | default 2 }}
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: frontend
@@ -26,4 +27,10 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+  strategy:
+    blueGreen:
+      activeService: frontend
+      previewService: frontend-preview
+      autoPromotionEnabled: true
+      previewReplicaCount: 1
 {{- end }}

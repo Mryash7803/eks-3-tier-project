@@ -72,6 +72,8 @@ backend:
     enabled: true
     release: monitoring
     interval: 15s
+  rollout:
+    enabled: false
 # React Frontend Service Configuration
 frontend:
   replicaCount: 2
@@ -89,6 +91,8 @@ frontend:
     limits:
       cpu: 500m
       memory: 512Mi
+  rollout:
+    enabled: false
 # Database Migrations Job Configuration
 migration:
   enabled: true
@@ -160,3 +164,8 @@ loadTest:
         'status is 200': (r) => r.status === 200,
       });
     }
+
+# Prometheus Monitoring configuration for Argo Rollouts Analysis
+monitoring:
+  prometheus:
+    address: http://prometheus-operated.monitoring.svc.cluster.local:9090

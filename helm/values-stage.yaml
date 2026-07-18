@@ -1,0 +1,36 @@
+postgres:
+  enabled: true
+  persistence:
+    size: 8Gi
+
+databaseSecret:
+  externalSecrets:
+    enabled: true
+    secretKey: eks-3tier-stage/database
+
+backend:
+  replicaCount: 2
+  rollout:
+    enabled: false
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+frontend:
+  replicaCount: 2
+  rollout:
+    enabled: false
+
+ingress:
+  hosts:
+    - host: stage.app.mryash7803.online
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend: backend
+          port: 8080
+        - path: /
+          pathType: Prefix
+          backend: frontend
+          port: 80

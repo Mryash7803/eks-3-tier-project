@@ -1,0 +1,18 @@
+{{- if .Values.frontend.rollout.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-preview
+  labels:
+    app: frontend-preview
+    {{- include "eks-3-tier-app.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type | default "ClusterIP" }}
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port | default 80 }}
+      targetPort: {{ .Values.frontend.service.port | default 80 }}
+      protocol: TCP
+{{- end }}
