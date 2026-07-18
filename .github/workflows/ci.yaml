@@ -10,13 +10,20 @@ env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_TAG: ${{ github.sha }}
 
+permissions:
+  contents: write
+
 jobs:
   build-and-push:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -26,41 +33,97 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build Backend
+      ##################################################
+      # Build & Push Backend
+      ##################################################
+
       - name: Build Backend Image
         run: |
-          docker build -t eks-3-tier-project-backend:${IMAGE_TAG} ./backend
+          docker build \
+            -t eks-3-tier-project-backend:${IMAGE_TAG} \
+            ./backend
 
       - name: Tag Backend Image
         run: |
           docker tag eks-3-tier-project-backend:${IMAGE_TAG} \
-          ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:${IMAGE_TAG}
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:${IMAGE_TAG}
 
           docker tag eks-3-tier-project-backend:${IMAGE_TAG} \
-          ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:latest
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:latest
 
       - name: Push Backend Image
         run: |
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:${IMAGE_TAG}
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:latest
 
-      # Build Frontend
+      ##################################################
+      # Build & Push Frontend
+      ##################################################
+
       - name: Build Frontend Image
         run: |
-          docker build -t eks-3-tier-project-frontend:${IMAGE_TAG} ./frontend
+          docker build \
+            -t eks-3-tier-project-frontend:${IMAGE_TAG} \
+            ./frontend
 
       - name: Tag Frontend Image
         run: |
           docker tag eks-3-tier-project-frontend:${IMAGE_TAG} \
-          ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:${IMAGE_TAG}
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:${IMAGE_TAG}
 
           docker tag eks-3-tier-project-frontend:${IMAGE_TAG} \
-          ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:latest
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:latest
 
       - name: Push Frontend Image
         run: |
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:${IMAGE_TAG}
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:latest
+
+      ##################################################
+      # Install yq
+      ##################################################
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      ##################################################
+      # Update Helm values.yaml
+      ##################################################
+
+      - name: Update Helm Image Tags
+        run: |
+          yq -i '.backend.image.tag = env(IMAGE_TAG)' helm/eks-3-tier-app/values.yaml
+          yq -i '.frontend.image.tag = env(IMAGE_TAG)' helm/eks-3-tier-app/values.yaml
+
+      ##################################################
+      # Commit Changes
+      ##################################################
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Commit Updated values.yaml
+        run: |
+          git add helm/eks-3-tier-app/values.yaml
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+            exit 0
+          fi
+
+          git commit -m "Update Helm image tags to ${IMAGE_TAG} [skip ci]"
+
+      ##################################################
+      # Push Changes
+      ##################################################
+
+      - name: Push Changes
+        run: |
+          git push origin main

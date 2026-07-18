@@ -10,9 +10,9 @@ postgres:
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
-    storageClass: ""
+    storageClass: "gp3-encrypted"
     accessMode: ReadWriteOnce
-    size: 5Gi
+    size: 10Gi
   service:
     port: 5432
     type: ClusterIP
@@ -21,7 +21,7 @@ postgres:
     name: tasks_db
     user: postgres
     password: postgres_password
-    sslMode: "disable" # disable for internal cluster connection, require for AWS RDS
+    sslMode: "require" # disable for internal cluster connection, require for AWS RDS
 
 # Database Credentials & Secret Configuration
 # If externalSecrets.enabled is true, Helm will create a ClusterSecretStore and ExternalSecret.
