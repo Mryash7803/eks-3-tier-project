@@ -13,23 +13,23 @@ graph TD
     User(["User Browser"]) -->|HTTPS| ALB["AWS Application Load Balancer"]
     ALB -->|/| FE["Frontend Rollout: Blue/Green"]
     ALB -->|/api| BE["Backend Rollout: Canary"]
-    
-    subgraph Kubernetes Production Cluster (EKS)
-        FE -->|Stable / Active| FE-Active["Frontend Pods: Active"]
-        FE -.->|Preview / Green| FE-Preview["Frontend Pods: Preview"]
-        
-        BE -->|Stable / 80% Traffic| BE-Stable["Backend Pods: Stable"]
-        BE -.->|Canary / 20% Traffic| BE-Canary["Backend Pods: Canary"]
-        
-        BE-Stable -->|SQL| RDS[("AWS Aurora PostgreSQL / RDS")]
-        BE-Canary -->|SQL| RDS
+
+    subgraph EKS["Kubernetes Production Cluster (EKS)"]
+        FE -->|Stable / Active| FEActive["Frontend Pods: Active"]
+        FE -.->|Preview / Green| FEPreview["Frontend Pods: Preview"]
+
+        BE -->|Stable / 80% Traffic| BEStable["Backend Pods: Stable"]
+        BE -.->|Canary / 20% Traffic| BECanary["Backend Pods: Canary"]
+
+        BEStable -->|SQL| RDS["AWS Aurora PostgreSQL / RDS"]
+        BECanary -->|SQL| RDS
     end
-    
-    subgraph Progressive Delivery & GitOps
-        ArgoCD["ArgoCD Controller"] -->|Sync Manifests| EKS-Apps["Multi-Environment Applications"]
+
+    subgraph GITOPS["Progressive Delivery & GitOps"]
+        ArgoCD["ArgoCD Controller"] -->|Sync Manifests| EKSApps["Multi-Environment Applications"]
         ArgoRollouts["Argo Rollouts Controller"] -->|Orchestrate Releases| FE
         ArgoRollouts -->|Orchestrate Releases| BE
-        Prometheus[("Prometheus metrics")] -->|Query Health| ArgoRollouts
+        Prometheus["Prometheus Metrics"] -->|Query Health| ArgoRollouts
     end
 ```
 
