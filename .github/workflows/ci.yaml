@@ -118,6 +118,9 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.0
+
       ##################################################
       # Build & Push Backend
       ##################################################
@@ -149,6 +152,14 @@ jobs:
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:${IMAGE_TAG}
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:latest
 
+      - name: Sign Backend Image with Cosign
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:${IMAGE_TAG}
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:latest
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
       ##################################################
       # Build & Push Frontend
       ##################################################
@@ -179,6 +190,14 @@ jobs:
         run: |
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:${IMAGE_TAG}
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:latest
+
+      - name: Sign Frontend Image with Cosign
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:${IMAGE_TAG}
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:latest
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
       ##################################################
       # Install yq

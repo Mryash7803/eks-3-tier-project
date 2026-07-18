@@ -84,11 +84,11 @@ spec:
     - imageReferences:
       - "469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-*"
       attestations: []
-      # Sample verification key (Replace with your actual Cosign public key)
+      # Cosign verification key
       keys: |-
         -----BEGIN PUBLIC KEY-----
-        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzs/x4V4F685mR3P8Vn1WvVqU9s/y
-        g/18vLgR6z0V1m8Xw8Dq7QvS+K5G8dK3mB5lKx5x/vC6H2Q8jU7mR2uL3g==
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZmZ1+rN08dou9gHsg2G+NFd1gCli
+        QHNmeqAk79OjxFDSyZoM6aGMvLN+lu5OwfjPWs3Nc843m28KRCEQXH9bYQ==
         -----END PUBLIC KEY-----
 
 ---
