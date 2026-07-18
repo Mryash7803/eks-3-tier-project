@@ -22,7 +22,6 @@ postgres:
     user: postgres
     password: postgres_password
     sslMode: "require" # disable for internal cluster connection, require for AWS RDS
-
 # Database Credentials & Secret Configuration
 # If externalSecrets.enabled is true, Helm will create a ClusterSecretStore and ExternalSecret.
 # Otherwise, it will create a standard Kubernetes Secret named 'backend-db-secret' using values from 'secretData' below.
@@ -39,13 +38,12 @@ databaseSecret:
     dbUsername: postgres
     dbPassword: postgres_password
     dbName: tasks_db
-
 # Go Backend Service Configuration
 backend:
   replicaCount: 2
   image:
     repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-backend
-    tag: v5
+    tag: d311e043f85c658b3c7f710bc6cbd58e01f29037
     pullPolicy: Always
   service:
     port: 8080
@@ -74,13 +72,12 @@ backend:
     enabled: true
     release: monitoring
     interval: 15s
-
 # React Frontend Service Configuration
 frontend:
   replicaCount: 2
   image:
     repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-frontend
-    tag: v1
+    tag: d311e043f85c658b3c7f710bc6cbd58e01f29037
     pullPolicy: IfNotPresent
   service:
     port: 80
@@ -92,7 +89,6 @@ frontend:
     limits:
       cpu: 500m
       memory: 512Mi
-
 # Database Migrations Job Configuration
 migration:
   enabled: true
@@ -102,7 +98,6 @@ migration:
     pullPolicy: Always
   backoffLimit: 3
   ttlSecondsAfterFinished: 86400
-
 # Ingress Configuration (AWS ALB defaults)
 ingress:
   enabled: true
@@ -126,7 +121,6 @@ ingress:
           pathType: Prefix
           backend: frontend
           port: 80
-
 # Storage Class Configuration (AWS EBS gp3)
 storageClass:
   enabled: true
@@ -137,7 +131,6 @@ storageClass:
   reclaimPolicy: Retain
   volumeBindingMode: WaitForFirstConsumer
   allowVolumeExpansion: true
-
 # EBS Test Pod & PVC Configuration (Disabled by default)
 ebsTest:
   enabled: false
@@ -147,7 +140,6 @@ ebsTest:
   pod:
     name: ebs-test-pod
     image: public.ecr.aws/docker/library/alpine:3.22
-
 # Load Testing configuration (Disabled by default)
 loadTest:
   enabled: false
@@ -155,15 +147,15 @@ loadTest:
   script: |
     import http from 'k6/http';
     import { check } from 'k6';
-    
+
     export const options = {
       vus: 100,
       duration: '3m',
     };
-    
+
     export default function () {
       const res = http.get('http://backend:8080/api/tasks');
-    
+
       check(res, {
         'status is 200': (r) => r.status === 200,
       });
