@@ -43,7 +43,7 @@ backend:
   replicaCount: 2
   image:
     repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-backend
-    tag: 13521a2eb11096884aea2361c1510d9fa92b3acd
+    tag: af7b5f55efe0ce61697c2e964d5363547b6e48f4
     pullPolicy: Always
   service:
     port: 8080
@@ -79,7 +79,7 @@ frontend:
   replicaCount: 2
   image:
     repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-frontend
-    tag: 13521a2eb11096884aea2361c1510d9fa92b3acd
+    tag: af7b5f55efe0ce61697c2e964d5363547b6e48f4
     pullPolicy: IfNotPresent
   service:
     port: 80
@@ -164,7 +164,6 @@ loadTest:
         'status is 200': (r) => r.status === 200,
       });
     }
-
 # Prometheus Monitoring configuration for Argo Rollouts Analysis
 monitoring:
   prometheus:
