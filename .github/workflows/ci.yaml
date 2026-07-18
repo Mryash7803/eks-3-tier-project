@@ -12,6 +12,7 @@ env:
 
 permissions:
   contents: write
+  security-events: write
 
 jobs:
   build-and-push:
@@ -24,6 +25,88 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      ##################################################
+      # Trivy Security Scans & SBOM Generation
+      ##################################################
+
+      - name: Run Trivy Filesystem Scan (SARIF)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy Filesystem Scan Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+          category: 'trivy-fs'
+
+      - name: Fail build on Critical Filesystem Vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln'
+          format: 'table'
+          exit-code: 1
+          severity: 'CRITICAL'
+
+      - name: Run Trivy Secret Scanning
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
+          format: 'table'
+          exit-code: 1
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy Kubernetes Manifest Scan (helm/)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: './helm'
+          scanners: 'misconfig'
+          format: 'sarif'
+          output: 'trivy-helm-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy Helm Scan Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-helm-results.sarif'
+          category: 'trivy-helm'
+
+      - name: Fail build on Critical Helm Misconfigurations
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: './helm'
+          scanners: 'misconfig'
+          format: 'table'
+          exit-code: 1
+          severity: 'CRITICAL'
+
+      - name: Generate SBOM (CycloneDX format)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'cyclonedx'
+          output: 'sbom.json'
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -49,10 +132,10 @@ jobs:
         with:
           image-ref: eks-3-tier-project-backend:${{ env.IMAGE_TAG }}
           format: table
-          exit-code: 0
+          exit-code: 1
           ignore-unfixed: true
           vuln-type: os,library
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
       - name: Tag Backend Image
         run: |
           docker tag eks-3-tier-project-backend:${IMAGE_TAG} \
@@ -80,10 +163,10 @@ jobs:
         with:
           image-ref: eks-3-tier-project-frontend:${{ env.IMAGE_TAG }}
           format: table
-          exit-code: 0
+          exit-code: 1
           ignore-unfixed: true
           vuln-type: os,library
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
       - name: Tag Frontend Image
         run: |
           docker tag eks-3-tier-project-frontend:${IMAGE_TAG} \
