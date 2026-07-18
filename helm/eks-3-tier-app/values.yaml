@@ -43,7 +43,7 @@ backend:
   replicaCount: 2
   image:
     repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-backend
-    tag: af7b5f55efe0ce61697c2e964d5363547b6e48f4
+    tag: efd8faf81de322267297cb2cd8b0aeb033f10cee
     pullPolicy: Always
   service:
     port: 8080
@@ -79,7 +79,7 @@ frontend:
   replicaCount: 2
   image:
     repository: 469072181105.dkr.ecr.ap-south-1.amazonaws.com/eks-3-tier-project-frontend
-    tag: af7b5f55efe0ce61697c2e964d5363547b6e48f4
+    tag: efd8faf81de322267297cb2cd8b0aeb033f10cee
     pullPolicy: IfNotPresent
   service:
     port: 80
