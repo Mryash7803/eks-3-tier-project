@@ -212,3 +212,9 @@ You can query logs manually inside the Grafana Explore page using **Loki** as th
 - Filter backend logs containing "error": `{app="backend"} |= "error"`
 - Expose rate of backend logs: `sum(count_over_time({app="backend"}[5m]))`
 
+---
+
+## ⚙️ Autoscaling Architecture & Choices
+
+Cluster Autoscaler was chosen for this project because it integrates cleanly with EKS managed node groups. Karpenter is a newer alternative that offers more advanced provisioning and cost optimization, but Cluster Autoscaler was selected to demonstrate the classic autoscaling architecture.
+
