@@ -10,26 +10,26 @@ It is designed for production deployment on **Amazon EKS (Elastic Kubernetes Ser
 
 ```mermaid
 graph TD
-    User([User Browser]) -->|HTTPS| ALB[AWS Application Load Balancer]
-    ALB -->|/| FE[Frontend Rollout: Blue/Green]
-    ALB -->|/api| BE[Backend Rollout: Canary]
+    User(["User Browser"]) -->|HTTPS| ALB["AWS Application Load Balancer"]
+    ALB -->|/| FE["Frontend Rollout: Blue/Green"]
+    ALB -->|/api| BE["Backend Rollout: Canary"]
     
     subgraph Kubernetes Production Cluster (EKS)
-        FE -->|Stable / Active| FE-Active[Frontend Pods: Active]
-        FE -.->|Preview / Green| FE-Preview[Frontend Pods: Preview]
+        FE -->|Stable / Active| FE-Active["Frontend Pods: Active"]
+        FE -.->|Preview / Green| FE-Preview["Frontend Pods: Preview"]
         
-        BE -->|Stable / 80% Traffic| BE-Stable[Backend Pods: Stable]
-        BE -.->|Canary / 20% Traffic| BE-Canary[Backend Pods: Canary]
+        BE -->|Stable / 80% Traffic| BE-Stable["Backend Pods: Stable"]
+        BE -.->|Canary / 20% Traffic| BE-Canary["Backend Pods: Canary"]
         
-        BE-Stable -->|SQL| RDS[(AWS Aurora PostgreSQL / RDS)]
+        BE-Stable -->|SQL| RDS[("AWS Aurora PostgreSQL / RDS")]
         BE-Canary -->|SQL| RDS
     end
     
     subgraph Progressive Delivery & GitOps
-        ArgoCD[ArgoCD Controller] -->|Sync Manifests| EKS-Apps[Multi-Environment Applications]
-        ArgoRollouts[Argo Rollouts Controller] -->|Orchestrate Releases| FE
+        ArgoCD["ArgoCD Controller"] -->|Sync Manifests| EKS-Apps["Multi-Environment Applications"]
+        ArgoRollouts["Argo Rollouts Controller"] -->|Orchestrate Releases| FE
         ArgoRollouts -->|Orchestrate Releases| BE
-        Prometheus[(Prometheus metrics)] -->|Query Health| ArgoRollouts
+        Prometheus[("Prometheus metrics")] -->|Query Health| ArgoRollouts
     end
 ```
 
