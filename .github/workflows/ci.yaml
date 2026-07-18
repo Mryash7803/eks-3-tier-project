@@ -154,7 +154,22 @@ jobs:
 
       - name: Sign Backend Image with Cosign
         run: |
-          echo "$COSIGN_PRIVATE_KEY" > cosign.key
+          python3 -c '
+          import os
+          key = os.environ.get("COSIGN_PRIVATE_KEY", "").strip()
+          parts = key.split("-----")
+          if len(parts) >= 5:
+              header = "-----" + parts[1] + "-----"
+              footer = "-----" + parts[3] + "-----"
+              payload = parts[2].replace(" ", "").replace("\n", "").replace("\r", "")
+              lines = [payload[i:i+64] for i in range(0, len(payload), 64)]
+              formatted = header + "\n" + "\n".join(lines) + "\n" + footer + "\n"
+              with open("cosign.key", "w") as f:
+                  f.write(formatted)
+          else:
+              with open("cosign.key", "w") as f:
+                  f.write(key + "\n")
+          '
           cosign sign --yes --key cosign.key ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:${IMAGE_TAG}
           cosign sign --yes --key cosign.key ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-backend:latest
           rm -f cosign.key
@@ -195,7 +210,22 @@ jobs:
 
       - name: Sign Frontend Image with Cosign
         run: |
-          echo "$COSIGN_PRIVATE_KEY" > cosign.key
+          python3 -c '
+          import os
+          key = os.environ.get("COSIGN_PRIVATE_KEY", "").strip()
+          parts = key.split("-----")
+          if len(parts) >= 5:
+              header = "-----" + parts[1] + "-----"
+              footer = "-----" + parts[3] + "-----"
+              payload = parts[2].replace(" ", "").replace("\n", "").replace("\r", "")
+              lines = [payload[i:i+64] for i in range(0, len(payload), 64)]
+              formatted = header + "\n" + "\n".join(lines) + "\n" + footer + "\n"
+              with open("cosign.key", "w") as f:
+                  f.write(formatted)
+          else:
+              with open("cosign.key", "w") as f:
+                  f.write(key + "\n")
+          '
           cosign sign --yes --key cosign.key ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:${IMAGE_TAG}
           cosign sign --yes --key cosign.key ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/eks-3-tier-project-frontend:latest
           rm -f cosign.key
