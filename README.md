@@ -1,220 +1,195 @@
-# 3-Tier Enterprise Task Cloud (React + Go + PostgreSQL)
+# 🚀 Enterprise Task Cloud (React + Go + PostgreSQL)
 
-This is a modern, high-performance 3-tier task management application designed for containerized development and deployment on Amazon EKS or local environments. 
+A high-performance, enterprise-grade 3-tier task management application built to showcase modern cloud-native architectures. The stack runs a **React/Vite** frontend (served via Nginx), a high-throughput **Go REST API** backend, and a persistent **PostgreSQL** database. 
 
-## Application Architecture
+It is designed for production deployment on **Amazon EKS (Elastic Kubernetes Service)** using **GitOps**, **Progressive Delivery (Argo Rollouts)**, and a **DevSecOps** pipeline.
 
-The application is structured into three decoupled tiers:
+---
 
-1. **Frontend (Presentation)**: Built with **React** and **Vite**, styled using a sleek, modern glassmorphic dark-theme design. Served through **Nginx** in production.
-2. **Backend (Application Logic)**: A high-throughput API gateway written in **Go**, exposing REST endpoints, managing database connection pooling, auto-running migrations, and supporting CORS middleware.
-3. **Database (Data Storage)**: A **PostgreSQL** relational database using a persistent volume mount to store task information securely.
+## 🏗️ System & GitOps Architecture
 
 ```mermaid
 graph TD
-    User([User Browser]) -->|HTTP Port 3002| FE[Frontend: React/Nginx Container]
-    User -->|API REST Port 8081| BE[Backend: Go API Container]
-    BE -->|SQL Port 5432| DB[(Database: PostgreSQL Container)]
+    User([User Browser]) -->|HTTPS| ALB[AWS Application Load Balancer]
+    ALB -->|/| FE[Frontend Rollout: Blue/Green]
+    ALB -->|/api| BE[Backend Rollout: Canary]
     
-    subgraph Local Docker Compose
-        FE
-        BE
-        DB
+    subgraph Kubernetes Production Cluster (EKS)
+        FE -->|Stable / Active| FE-Active[Frontend Pods: Active]
+        FE -.->|Preview / Green| FE-Preview[Frontend Pods: Preview]
+        
+        BE -->|Stable / 80% Traffic| BE-Stable[Backend Pods: Stable]
+        BE -.->|Canary / 20% Traffic| BE-Canary[Backend Pods: Canary]
+        
+        BE-Stable -->|SQL| RDS[(AWS Aurora PostgreSQL / RDS)]
+        BE-Canary -->|SQL| RDS
+    end
+    
+    subgraph Progressive Delivery & GitOps
+        ArgoCD[ArgoCD Controller] -->|Sync Manifests| EKS-Apps[Multi-Environment Applications]
+        ArgoRollouts[Argo Rollouts Controller] -->|Orchestrate Releases| FE
+        ArgoRollouts -->|Orchestrate Releases| BE
+        Prometheus[(Prometheus metrics)] -->|Query Health| ArgoRollouts
     end
 ```
 
 ---
 
-## Folder Structure
+## ✨ Features
+
+- **Frontend (Presentation Tier)**: Responsive, glassmorphic dark-theme React application served via Nginx with container-level optimization.
+- **Backend (Application Tier)**: Statically compiled Go API handling connection pooling, CORS middleware, and automatic database migration jobs.
+- **Multi-Environment GitOps**: Environment-specific values (`Dev`, `Stage`, `Prod`) feeding a unified Helm chart managed via distinct ArgoCD Applications.
+- **Progressive Delivery (Argo Rollouts)**:
+  - **Backend**: Automated Canary deployments routing 20% ➔ 50% ➔ 80% traffic, validated dynamically by a Prometheus `AnalysisTemplate` monitoring request success rate.
+  - **Frontend**: Zero-downtime Blue/Green deployments with automated preview promotions.
+- **DevSecOps Pipeline**:
+  - GHA-triggered filesystem and Helm configuration security audits using Trivy (failing on critical vulnerabilities).
+  - Software Bill of Materials (SBOM) generation (CycloneDX format) uploaded as workflow artifacts.
+  - Cryptographic container image signing using **Cosign** during ECR pushes.
+- **Policy as Code (Kyverno)**: Cluster admission controller enforcing resource limits, blocking `:latest` tags, requiring Cosign image signatures, and banning root-user container executions.
+- **Autoscaling & Observability**: High availability using HPA coupled with EKS Cluster Autoscaler, and log aggregation using Grafana Loki + Promtail.
+
+---
+
+## 📂 Project Structure
 
 ```text
 eks-3-tier-project/
-├── docker-compose.yml       # Docker Compose orchestrator
-├── README.md                # Documentation
-├── backend/                 # Go Backend API Service
-│   ├── Dockerfile
-│   ├── go.mod
-│   ├── go.sum
-│   ├── cmd/
-│   │   ├── backend/
-│   │   │   └── main.go
-│   │   └── migrate/
-│   │       └── main.go
-│   └── internal/
-│       └── db/
-│           ├── connect.go
-│           └── migrate.go
-├── frontend/                # React Frontend Service
-│   ├── Dockerfile
-│   ├── nginx.conf           # Nginx Configuration
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── index.html
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       └── index.css        # Rich custom CSS design system
-└── k8s/                     # Kubernetes Manifests for EKS
-    ├── postgres.yaml
-    ├── backend.yaml
-    ├── frontend.yaml
-    └── migration-job.yaml
+├── .github/workflows/       # GitHub Actions CI Workflow
+│   └── ci.yaml              # Trivy Scans, SBOM, Cosign signing, ECR push
+├── argocd/                  # ArgoCD GitOps Application Definitions
+│   ├── dev-app.yaml         # Deploys Chart to 'dev' namespace using dev values
+│   ├── stage-app.yaml       # Deploys Chart to 'stage' namespace using stage values
+│   └── prod-app.yaml        # Deploys Chart to 'production' namespace using prod values
+├── backend/                 # Go REST API Service
+│   ├── cmd/                 # Application Entrypoints (API Server & Migration tool)
+│   ├── Dockerfile           # Multi-stage optimized Go build (Go 1.24)
+│   └── go.mod               # Dependencies declarations
+├── frontend/                # React Vite UI Web App
+│   ├── src/                 # React component templates
+│   ├── Dockerfile           # Nginx:alpine based optimized frontend build
+│   └── nginx.conf           # Reverse proxy routing rules
+├── helm/                    # Unified Deployment Manifests
+│   ├── eks-3-tier-app/      # Main application Helm Chart (Templates, Chart.yaml)
+│   ├── values-dev.yaml      # Low-cost developer configurations
+│   ├── values-stage.yaml    # Pre-production validation configurations
+│   └── values-prod.yaml     # High-availability production settings (Rollouts enabled)
+├── k8s/                     # Infrastructure Addons & Policies
+│   ├── autoscaler/          # EKS Cluster Autoscaler deployment manifests
+│   └── kyverno/             # Kyverno admission controller rules & setup scripts
+└── cosign.pub               # Cosign public key for container signature verification
 ```
 
 ---
 
-## Getting Started: Local Development (Docker Compose)
+## 💻 Local Quickstart (Docker Compose)
 
-Ensure you have [Docker](https://docs.docker.com/get-docker/) installed.
-
-### 1. Build and Start the Application
-
-From the root directory (`eks-3-tier-project`), run the following command to build and launch all containers in background:
+Launch the stack locally to test endpoints and frontend interface instantly:
 
 ```bash
+# Clone the repository and navigate to root
+git clone https://github.com/Mryash7803/eks-3-tier-project.git
+cd eks-3-tier-project
+
+# Launch services
 docker compose up --build -d
 ```
 
-### 2. Verify Running Services
-
-Check the container status:
-
-```bash
-docker compose ps
-```
-
-You should see three containers running:
-- `eks-3tier-frontend` (Port `3002`)
-- `eks-3tier-backend` (Port `8081`)
-- `eks-3tier-db` (Port `5432`)
-
-### 3. Accessing the Tiers
-
+### Accessing the Local Services:
 - **React Frontend**: Open [http://localhost:3002](http://localhost:3002) in your browser.
 - **Go API Healthcheck**: Access [http://localhost:8081/api/health](http://localhost:8081/api/health).
-- **Go API Tasks**: Access [http://localhost:8081/api/tasks](http://localhost:8081/api/tasks).
+- **Go API Tasks Endpoint**: Access [http://localhost:8081/api/tasks](http://localhost:8081/api/tasks).
 
-### 4. Cleaning Up
-
-To stop all services and delete the PostgreSQL persistent data volume:
-
+To stop the containers and purge local data volumes:
 ```bash
 docker compose down -v
 ```
 
 ---
 
-## API Endpoints Reference
+## ☸️ GitOps Multi-Environment Deployments (ArgoCD)
 
-The Go backend exposes the following RESTful API endpoints:
+The project leverages a single, customizable Helm chart (`helm/eks-3-tier-app`) mapped to three different environments via ArgoCD.
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/health` | `GET` | Database connectivity & status ping |
-| `/api/tasks` | `GET` | Fetch all tasks from PostgreSQL |
-| `/api/tasks` | `POST` | Create a new task (JSON payload required) |
-| `/api/tasks/<id>` | `PUT` | Update details or toggle task completion status |
-| `/api/tasks/<id>` | `DELETE` | Remove a task permanently from the database |
+To deploy any environment, apply its corresponding Application file:
+
+```bash
+# Deploy DEV (Namespace: dev, Rollouts: Disabled, Replicas: 1)
+kubectl apply -f argocd/dev-app.yaml
+
+# Deploy STAGE (Namespace: stage, Rollouts: Disabled, Replicas: 2)
+kubectl apply -f argocd/stage-app.yaml
+
+# Deploy PROD (Namespace: production, Rollouts: Enabled, Replicas: 3)
+kubectl apply -f argocd/prod-app.yaml
+```
 
 ---
 
-## Deploying to AWS EKS (Kubernetes)
+## 🎯 Progressive Delivery (Argo Rollouts)
 
-We have provided native Kubernetes manifests under the `k8s/` directory.
+In the **production** environment, releases bypass standard rolling updates and utilize **Argo Rollouts** for controlled, safe rollouts.
 
-### 1. Build & Push Images to ECR (Amazon Elastic Container Registry)
+### Backend Canary Deployment:
+During a backend image update, traffic shifts incrementally:
+1. **Step 1**: Routes **20%** of traffic to the Canary pods.
+2. **Analysis Run**: A Prometheus `AnalysisTemplate` queries the gateway metrics every 30s. If the success rate falls below `95%`, the deployment immediately aborts and rolls back.
+3. **Step 2**: Routes **50%** of traffic for 2 minutes.
+4. **Step 3**: Routes **80%** of traffic for 1 minute.
+5. **Promotion**: Promotes to 100% stable version.
 
-Create ECR repositories in your AWS account and push the built images:
-
-```bash
-# Login to AWS ECR
-aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.<region>.amazonaws.com
-
-# Tag images
-docker tag eks-3-tier-project-frontend:latest <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-frontend:latest
-docker tag eks-3-tier-project-backend:latest <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-backend:latest
-
-# Push images
-docker push <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-frontend:latest
-docker push <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-backend:latest
-```
-
-### 2. Update Manifests
-
-Open `k8s/frontend.yaml` and `k8s/backend.yaml`, then replace the image placeholders with your pushed ECR repository URIs:
-- `image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-backend:latest`
-- `image: <aws_account_id>.dkr.ecr.<region>.amazonaws.com/eks-3tier-frontend:latest`
-
-### 3. Deploy using Helm (Recommended)
-
-You can deploy the entire 3-tier application stack with the unified Helm chart located in `helm/eks-3-tier-app`:
-
-```bash
-# Create the production namespace (if not exists)
-kubectl create namespace production
-
-# Install the Helm chart
-helm install eks-3-tier-app ./helm/eks-3-tier-app --namespace production
-```
-
-To customize parameters such as database settings, AWS Secrets Manager secrets, or replica counts, update `helm/eks-3-tier-app/values.yaml` or use `--set`:
-```bash
-# Example: Disable in-cluster PostgreSQL to use an external RDS instance
-helm install eks-3-tier-app ./helm/eks-3-tier-app \
-  --namespace production \
-  --set postgres.enabled=false \
-  --set databaseSecret.secretData.dbHost="your-rds-endpoint.amazonaws.com"
-```
-
-### 4. Deploy using raw Manifests (Alternative)
-
-Connect to your AWS EKS cluster and apply the raw manifests:
-
-```bash
-kubectl apply -f k8s/
-```
-
-### 5. Verify Deployments & Expose URL
-
-Monitor the status of pods and services:
-
-```bash
-kubectl get pods -n production -w
-kubectl get svc -n production
-```
-
-AWS ALB Controller will dynamically provision an Application Load Balancer based on the Ingress rules. Navigate to the host address configured (e.g., `app.mryash7803.online`) or verify the endpoint routes.
+### Frontend Blue/Green Deployment:
+Frontend updates deploy to a green stack. A preview service allows validation while 100% of user traffic safely targets the stable blue stack. Once validation passes, the active service shifts traffic instantly to the green stack.
 
 ---
 
-## 📊 Monitoring & Observability (Loki + Promtail + Grafana)
+## 🛡️ DevSecOps & Policy Enforcements
 
-The project includes an integrated log aggregation stack using Grafana Loki and Promtail.
+We enforce security at every step, starting from the CI pipeline up to cluster admission.
 
-### 1. View Logs in Grafana
-Access your Grafana visualization dashboard by port-forwarding:
+### 1. CI Pipeline Guardrails (Trivy & Cosign)
+The GitHub Actions workflow executes these steps:
+- **Static Security Audits**: Scans the filesystem, secrets, and Helm configs with Trivy. Files containing critical vulnerabilities fail the build.
+- **SBOM Generation**: Generates a `sbom.json` using CycloneDX and attaches it as a workflow artifact.
+- **Cosign Image Signing**: Automatically signs backend and frontend images using a secure Cosign private key stored in GitHub Repository Secrets.
+
+### 2. Admission Control Policies (Kyverno)
+Kyverno ClusterPolicies block non-compliant workloads before pods start:
+- `require-resource-limits`: Blocks any pod that does not specify CPU/Memory limits.
+- `disallow-latest-tag`: Rejects deployments using `:latest` tags.
+- `require-signed-images`: Inspects container image signatures against the public key `cosign.pub`. Non-signed containers are blocked.
+- `require-non-root-user`: Enforces `runAsNonRoot: true` in the pod/container securityContexts.
+
+To install Kyverno and apply the policies:
+```bash
+cd k8s/kyverno
+chmod +x install.sh
+./install.sh
+```
+
+---
+
+## ⚙️ EKS Cluster Autoscaling
+
+Cluster Autoscaler is deployed under the `kube-system` namespace in EKS to dynamically adjust managed node groups based on pod resource demands.
+
+> **Design Choice Justification**:
+> Cluster Autoscaler was chosen for this project because it integrates cleanly with EKS managed node groups. Karpenter is a newer alternative that offers more advanced provisioning and cost optimization, but Cluster Autoscaler was selected to demonstrate the classic autoscaling architecture.
+
+To deploy the autoscaler resources:
+```bash
+kubectl apply -f k8s/autoscaler/cluster-autoscaler.yaml
+```
+
+---
+
+## 📊 Monitoring & Log Analysis
+
+Logs from the application tiers are aggregated using Grafana Loki and Promtail.
+
+Port-forward to Grafana dashboard:
 ```bash
 kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
 ```
-- **URL**: [http://localhost:3000](http://localhost:3000)
-- **Username**: `admin`
-- **Password**: `BINNiiBxsWT4y7Nz83oO2bFGYgrtOpd9N6kXTdUt`
-
-### 2. Pre-configured Dashboard
-We have imported a custom dashboard named **"3-Tier Application Logs (Loki)"** which displays:
-- **Log Rate by Application**: Visual comparison of backend and frontend logs over time.
-- **Total Errors**: Aggregated error and warning counts in the last 1 hour.
-- **Service Logs**: Raw, search-enabled logs for both the `backend` and `frontend` microservices.
-
-### 3. LogQL Queries (Explore Tab)
-You can query logs manually inside the Grafana Explore page using **Loki** as the data source:
-- Fetch all backend logs: `{app="backend"}`
-- Filter backend logs containing "error": `{app="backend"} |= "error"`
-- Expose rate of backend logs: `sum(count_over_time({app="backend"}[5m]))`
-
----
-
-## ⚙️ Autoscaling Architecture & Choices
-
-Cluster Autoscaler was chosen for this project because it integrates cleanly with EKS managed node groups. Karpenter is a newer alternative that offers more advanced provisioning and cost optimization, but Cluster Autoscaler was selected to demonstrate the classic autoscaling architecture.
-
+Open [http://localhost:3000](http://localhost:3000), log in (`admin`/`BINNiiBxsWT4y7Nz83oO2bFGYgrtOpd9N6kXTdUt`), and explore the pre-configured **"3-Tier Application Logs (Loki)"** dashboard.
