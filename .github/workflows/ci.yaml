@@ -44,7 +44,15 @@ jobs:
           docker build \
             -t eks-3-tier-project-backend:${IMAGE_TAG} \
             ./backend
-
+      - name: Scan Backend Image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: eks-3-tier-project-backend:${{ env.IMAGE_TAG }}
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
       - name: Tag Backend Image
         run: |
           docker tag eks-3-tier-project-backend:${IMAGE_TAG} \
@@ -67,7 +75,15 @@ jobs:
           docker build \
             -t eks-3-tier-project-frontend:${IMAGE_TAG} \
             ./frontend
-
+      - name: Scan Frontend Image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: eks-3-tier-project-frontend:${{ env.IMAGE_TAG }}
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
       - name: Tag Frontend Image
         run: |
           docker tag eks-3-tier-project-frontend:${IMAGE_TAG} \
